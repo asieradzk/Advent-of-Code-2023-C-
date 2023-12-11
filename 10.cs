@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using static _10;
 using static _10.Node;
 
 public static class _10
@@ -145,17 +146,85 @@ public static class _10
         }
         
         path.Remove(path.Last());
-
-        myMaze.FloodFillFromEdges( path);
-        var enclosedTiles = myMaze.CountEnclosedTiles(path);
-
-
-
-
+        //also add the origin node from the second and third node
+        var node = path[1];
+        path.Add(myMaze.maze[node.originX, node.originY]);
+        node = path[2];
+        path.Add(myMaze.maze[node.originX, node.originY]);
 
 
-        return enclosedTiles.ToString();
+        List<Node> tilesToCheck = new();
+        //All the maze tiles not on path
+        for(int x = 0; x < myMaze.maze.GetLength(0); x++)
+        {
+            for(int y = 0; y < myMaze.maze.GetLength(1); y++)
+            {
+                if (!path.Contains(myMaze.maze[x,y]))
+                {
+                    tilesToCheck.Add(myMaze.maze[x, y]);
+                }
+            }
+        }
+
+
+        //for each of these tiles we move left (x-1) till we end out of bounds x < 0
+        //we calculate number of times we crossed a "vertical" tile that beongs to the path
+
+        var result = Raycast(tilesToCheck, path);
+
+        return result;
+
+        string Raycast(List<Node> tilesToCheck, List<Node> path)
+        {
+            List<Node> result = new List<Node>();
+            foreach (var tile in tilesToCheck)
+            {
+                int x = tile.x;
+                int y = tile.y;
+                int counter2 = 0;
+                while (x > 0)
+                {
+                    x--;
+                    if (path.Contains(myMaze.maze[x, y]) && (myMaze.maze[x,y].nodeType == NodeType.Vertical || myMaze.maze[x, y].nodeType == NodeType.LeftUp || myMaze.maze[x, y].nodeType == NodeType.RightUp) )
+                    {
+                        counter2++;
+                    }
+                    
+                }
+                // If odd number
+                if (counter2 % 2 == 1)
+                {
+                    result.Add(tile);
+                }
+            }
+
+            // Print out the entire grid
+            for (int y = 0; y < myMaze.maze.GetLength(1); y++)
+            {
+                for (int x = 0; x < myMaze.maze.GetLength(0); x++)
+                {
+                    if (path.Contains(myMaze.maze[x, y]))
+                    {
+                        Console.Write('_'); // Path
+                    }
+                    else if (result.Contains(myMaze.maze[x, y]))
+                    {
+                        Console.Write('I'); // Inside path
+                    }
+                    else
+                    {
+                        Console.Write('X'); // Other tiles
+                    }
+                }
+                Console.WriteLine();
+            }
+
+            return result.Count.ToString();
+        }
+
     }
+
+
 
     private static bool isFinished(List<Node> explorations)
     {
@@ -200,151 +269,16 @@ public static class _10
                 }
             }
         }
-
-
-        public void FloodFill(int x, int y, List<Node> circuit)
-        {
-            if (x < 0 || x >= maze.GetLength(0) || y < 0 || y >= maze.GetLength(1))
-                return;
-
-            Node node = maze[x, y];
-
-            // Skip if the node is already visited or part of the circuit
-            if (node.Visited || circuit.Contains(node))
-                return;
-
-            node.Visited = true;
-
-            // Standard flood fill in four directions
-            FloodFill(x + 1, y, circuit);
-            FloodFill(x - 1, y, circuit);
-            FloodFill(x, y + 1, circuit);
-            FloodFill(x, y - 1, circuit);
-
-            // Check for squeezable paths
-            if (CanSqueeze(x, y, circuit))
-            {
-                // Propagate flood fill to diagonally adjacent tiles
-                FloodFill(x + 1, y + 1, circuit);
-                FloodFill(x - 1, y - 1, circuit);
-                FloodFill(x + 1, y - 1, circuit);
-                FloodFill(x - 1, y + 1, circuit);
-            }
-        }
-        private bool CanSqueeze(int x, int y, List<Node> circuit)
-        {
-            // Check if the current position is at the edge of the maze where squeezing isn't possible
-            if (x <= 0 || x >= maze.GetLength(0) - 1 || y <= 0 || y >= maze.GetLength(1) - 1)
-                return false;
-
-            // Check for right angle pipe configurations
-            bool pipeAbove = IsPipe(maze[x, y - 1]);
-            bool pipeBelow = IsPipe(maze[x, y + 1]);
-            bool pipeLeft = IsPipe(maze[x - 1, y]);
-            bool pipeRight = IsPipe(maze[x + 1, y]);
-
-            // Squeezing is possible in the diagonal gaps created by right angle configurations
-            return ((pipeAbove || pipeBelow) && (pipeLeft || pipeRight)) && !circuit.Contains(maze[x, y]);
-        }
-
-        private bool IsPipe(Node node)
-        {
-            return node.nodeType != NodeType.Ground && node.nodeType != NodeType.Start;
-        }
-
-
-
-        public void FloodFillFromEdges(List<Node> circuit)
-        {
-            int width = maze.GetLength(0);
-            int height = maze.GetLength(1);
-
-            // Perform flood fill from all edges
-            for (int x = 0; x < width; x++)
-            {
-                FloodFill(x, 0, circuit); // Top edge
-                FloodFill(x, height - 1, circuit); // Bottom edge
-            }
-            for (int y = 0; y < height; y++)
-            {
-                FloodFill(0, y, circuit); // Left edge
-                FloodFill(width - 1, y, circuit); // Right edge
-            }
-        }
-
-        private bool CanSqueezeDiagonally(int x, int y, List<Node> circuit)
-        {
-            // Check bounds
-            if (x <= 0 || x >= maze.GetLength(0) - 1 || y <= 0 || y >= maze.GetLength(1) - 1)
-                return false;
-
-            // Check for right angle pipe configurations
-            bool pipeAbove = circuit.Contains(maze[x, y - 1]);
-            bool pipeBelow = circuit.Contains(maze[x, y + 1]);
-            bool pipeLeft = circuit.Contains(maze[x - 1, y]);
-            bool pipeRight = circuit.Contains(maze[x + 1, y]);
-
-            // Squeezing is possible if there are pipes in any of the right angle configurations
-            return (pipeAbove && pipeLeft) || (pipeAbove && pipeRight) ||
-                   (pipeBelow && pipeLeft) || (pipeBelow && pipeRight);
-        }
-
-
-
-        public int CountEnclosedTiles(List<Node> circuit)
-        {
-            int count = 0;
-
-            // Debugging loop to print out the maze with enclosed tiles
-            for (int y = 0; y < maze.GetLength(1); y++)
-            {
-                for (int x = 0; x < maze.GetLength(0); x++)
-                {
-                    Node node = maze[x, y];
-                    if (!node.Visited && !circuit.Contains(node))
-                        Console.Write('X');
-                    else
-                        Console.Write(' ');
-                }
-                Console.WriteLine();
-            }
-            Console.WriteLine();
-
-            // Count enclosed tiles
-            for (int x = 0; x < maze.GetLength(0); x++)
-            {
-                for (int y = 0; y < maze.GetLength(1); y++)
-                {
-                    Node node = maze[x, y];
-                    if (!node.Visited && !circuit.Contains(node))
-                        count++;
-                }
-            }
-            return count;
-        }
-
-
-
-        public void ResetVisited()
-        {
-            for (int x = 0; x < maze.GetLength(0); x++)
-            {
-                for (int y = 0; y < maze.GetLength(1); y++)
-                {
-                    maze[x, y].Visited = false;
-                }
-            }
-        }
-
     }
 
-    public class Node
+
+        public class Node
     {
         public int x;
         public int y;
         public NodeType nodeType;
-        int originX;
-        int originY;
+        public int originX;
+        public int originY;
         public bool Visited { get; set; } = false;
 
 
